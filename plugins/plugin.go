@@ -7,7 +7,8 @@ import (
 
 type Plugin struct {
 	Name   string `json:"name"`
-	Github string `json:"github,omitempty"`
+	GithubUser string `bson:"github_user" json:"github-user"`
+	GithubRepo string `bson:"github_repo" json:"github-repo"`
 }
 
 func FindByName(mongo *mgo.Session, name string) *Plugin {

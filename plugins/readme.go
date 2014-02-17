@@ -1,10 +1,12 @@
 package plugins
 
 import (
+	"github.com/google/go-github/github"
 	"github.com/russross/blackfriday"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"encoding/base64"
 )
 
 type Readme struct {
@@ -12,9 +14,16 @@ type Readme struct {
 }
 
 func (p *Plugin) rawReadme() []byte {
-	url := p.ReadmeUrl()
-	readme, _ := HttpGet(url)
-	return readme
+	client := github.NewClient(nil)
+	content, _, err := client.Repositories.GetReadme(p.GithubUser, p.GithubRepo)
+	if err != nil {
+		panic(err)
+	}
+	markdown, err := base64.StdEncoding.DecodeString(*content.Content)
+	if err != nil {
+		panic(err)
+	}
+	return markdown
 }
 
 func HttpGet(url string) ([]byte, error) {
@@ -36,8 +45,4 @@ func (p *Plugin) Readme() *Readme {
 	}
 	html := blackfriday.MarkdownCommon(markdown)
 	return &Readme{string(html)}
-}
-
-func (*Plugin) ReadmeUrl() string {
-	return "https://raw.github.com/tpope/vim-surround/master/README.markdown"
 }
