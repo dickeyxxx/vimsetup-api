@@ -4,7 +4,7 @@ import (
 	"github.com/codegangsta/martini"
 	"github.com/martini-contrib/cors"
 	"github.com/martini-contrib/encoder"
-	"github.com/dickeyxxx/vimsetup-api/plugins"
+	"github.com/dickeyxxx/vimsetupapi/plugins"
 	"labix.org/v2/mgo"
 	"net/http"
 	"os"
