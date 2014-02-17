@@ -2,17 +2,13 @@ package main
 
 import (
 	"github.com/codegangsta/martini"
-	"github.com/martini-contrib/render"
 	"github.com/martini-contrib/cors"
+	"github.com/martini-contrib/encoder"
+	"github.com/dickeyxxx/vimsetup-api/plugins"
 	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
+	"net/http"
 	"os"
 )
-
-type Plugin struct {
-	Name string
-	Github string
-}
 
 func main() {
 	mongo := mongoSession()
@@ -21,32 +17,59 @@ func main() {
 }
 
 func Serve(mongo *mgo.Session) {
-	m := martini.Classic()
-	m.Use(render.Renderer())
+	m := martini.New()
+	m.Map(mongo)
+	m.Use(martini.Recovery())
+	m.Use(martini.Logger())
+
+	m.Use(func(c martini.Context, w http.ResponseWriter) {
+		c.MapTo(encoder.JsonEncoder{}, (*encoder.Encoder)(nil))
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	})
 
 	m.Use(cors.Allow(&cors.Options{
-		AllowOrigins:     []string{"http://localhost*", "http://vimsetup.com"},
-		AllowMethods:     []string{"GET", "POST"},
-		AllowHeaders:     []string{"Origin"},
-		ExposeHeaders:    []string{"Content-Length"},
+		AllowOrigins:  []string{"http://localhost*", "http://vimsetup.com"},
+		AllowMethods:  []string{"GET", "POST"},
+		AllowHeaders:  []string{"Origin"},
+		ExposeHeaders: []string{"Content-Length"},
 	}))
 
-	m.Get("/plugins", func(r render.Render) {
-		plugins := Plugins(mongo)
-		r.JSON(200, plugins)
-	})
+	m.Action(Router().Handle)
 
 	m.Run()
 }
 
-func Plugins(mongo *mgo.Session) []Plugin {
-	res := []Plugin{}
-	plugins := mongo.DB("").C("plugins")
-	err := plugins.Find(bson.M{}).All(&res)
-	if err != nil {
-		panic(err)
-	}
-	return res
+func Router() martini.Router {
+	router := martini.NewRouter()
+
+	router.Get("/plugins", func(enc encoder.Encoder, mongo *mgo.Session) (int, []byte) {
+		plugins := plugins.All(mongo)
+		return http.StatusOK, encoder.Must(enc.Encode(plugins))
+	})
+
+	router.Get("/plugins/:author/:name", func(params martini.Params, enc encoder.Encoder, mongo *mgo.Session) (int, []byte) {
+		plugin := plugins.FindByName(mongo, params["name"])
+		if plugin != nil {
+			return http.StatusOK, encoder.Must(enc.Encode(plugin))
+		} else {
+			return notFound()
+		}
+	})
+
+	router.Get("/plugins/:author/:name/readme", func(params martini.Params, enc encoder.Encoder, mongo *mgo.Session) (int, []byte) {
+		plugin := plugins.FindByName(mongo, params["name"])
+		if plugin == nil {
+			return notFound()
+		}
+		readme := plugin.Readme()
+		return http.StatusOK, encoder.Must(enc.Encode(readme))
+	})
+
+	return router
+}
+
+func notFound() (int, []byte) {
+	return http.StatusNotFound, []byte{}
 }
 
 func mongoSession() *mgo.Session {
