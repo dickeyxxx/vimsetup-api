@@ -8,6 +8,8 @@ build:
         code: |
           cd $WERCKER_SOURCE_DIR
           go version
+          go get github.com/onsi/ginkgo
+          go get github.com/onsi/gomega
           go get -t ./...
 
     - script:

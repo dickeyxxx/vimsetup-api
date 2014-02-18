@@ -1,4 +1,4 @@
-package main
+package scraper_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestVimsetupApi(t *testing.T) {
+func TestScraper(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Vimsetup Api Suite")
+	RunSpecs(t, "Scraper Suite")
 }

@@ -2,18 +2,14 @@ package plugins
 
 import (
 	"github.com/google/go-github/github"
-	"github.com/russross/blackfriday"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"github.com/dickeyxxx/githubmarkdown"
 	"encoding/base64"
 )
 
-type Readme struct {
-	Html string `json:"html"`
-}
-
-func (p *Plugin) rawReadme() []byte {
+func (p *Plugin) rawReadme() string {
 	client := github.NewClient(nil)
 	content, _, err := client.Repositories.GetReadme(p.GithubUser, p.GithubRepo)
 	if err != nil {
@@ -23,7 +19,7 @@ func (p *Plugin) rawReadme() []byte {
 	if err != nil {
 		panic(err)
 	}
-	return markdown
+	return string(markdown)
 }
 
 func HttpGet(url string) ([]byte, error) {
@@ -38,11 +34,15 @@ func HttpGet(url string) ([]byte, error) {
 	return body, nil
 }
 
-func (p *Plugin) Readme() *Readme {
+func (p *Plugin) Readme() string {
 	markdown := p.rawReadme()
-	if markdown == nil {
-		return nil
+	if markdown == "" {
+		return ""
 	}
-	html := blackfriday.MarkdownCommon(markdown)
-	return &Readme{string(html)}
+	html, err := githubmarkdown.Parse(markdown)
+	if err != nil {
+		log.Println("Error parsing markdown:", err)
+		return ""
+	}
+	return string(html)
 }

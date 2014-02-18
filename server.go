@@ -4,21 +4,24 @@ import (
 	"github.com/codegangsta/martini"
 	"github.com/martini-contrib/cors"
 	"github.com/martini-contrib/encoder"
-	"github.com/dickeyxxx/vimsetup-api/plugins"
+	"github.com/dickeyxxx/vimsetupapi/plugins"
 	"labix.org/v2/mgo"
 	"net/http"
+	"github.com/kdar/factorlog"
 	"os"
 )
 
 func main() {
 	mongo := mongoSession()
+	log := factorlog.New(os.Stdout, factorlog.NewStdFormatter("%{Date} %{Time} %{File}:%{Line} %{Message}"))
 	defer mongo.Close()
-	Serve(mongo)
+	Serve(mongo, log)
 }
 
-func Serve(mongo *mgo.Session) {
+func Serve(mongo *mgo.Session, log factorlog.Logger) {
 	m := martini.New()
 	m.Map(mongo)
+	m.Map(log)
 	m.Use(martini.Recovery())
 	m.Use(martini.Logger())
 
@@ -41,6 +44,11 @@ func Serve(mongo *mgo.Session) {
 
 func Router() martini.Router {
 	router := martini.NewRouter()
+
+	router.Get("/", func(enc encoder.Encoder) (int, []byte) {
+		doc := map[string]interface{}{"Foo": "bar"}
+		return http.StatusOK, encoder.Must(enc.Encode(doc))
+	})
 
 	router.Get("/plugins", func(enc encoder.Encoder, mongo *mgo.Session) (int, []byte) {
 		plugins := plugins.All(mongo)
