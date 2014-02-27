@@ -5,6 +5,7 @@ import (
 	"github.com/martini-contrib/cors"
 	"github.com/martini-contrib/encoder"
 	"github.com/dickeyxxx/vimsetupapi/plugins"
+	"github.com/dickeyxxx/vimsetupapi/db"
 	"labix.org/v2/mgo"
 	"net/http"
 	"github.com/kdar/factorlog"
@@ -12,7 +13,7 @@ import (
 )
 
 func main() {
-	mongo := mongoSession()
+	mongo := db.MongoSession()
 	log := factorlog.New(os.Stdout, factorlog.NewStdFormatter("%{Date} %{Time} %{File}:%{Line} %{Message}"))
 	defer mongo.Close()
 	Serve(mongo, log)
@@ -78,17 +79,4 @@ func Router() martini.Router {
 
 func notFound() (int, []byte) {
 	return http.StatusNotFound, []byte{}
-}
-
-func mongoSession() *mgo.Session {
-	uri := os.Getenv("MONGOHQ_URL")
-	if uri == "" {
-		uri = "mongodb://localhost/vimsetup"
-	}
-	mongo, err := mgo.Dial(uri)
-	if err != nil {
-		panic(err)
-	}
-
-	return mongo
 }

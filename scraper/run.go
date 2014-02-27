@@ -4,6 +4,8 @@ import (
 	"code.google.com/p/go.net/html"
 	"github.com/dickeyxxx/vimsetupapi/cache"
 	"github.com/dickeyxxx/vimsetupapi/plugins"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -37,7 +39,7 @@ func (f *Fetcher) Fetch(url string) string {
 	return text
 }
 
-func Run(log *log.Logger) {
+func Run(log *log.Logger, mongo *mgo.Session) {
 	fetcher := &Fetcher{
 		Cache: cache.NewRedisCache(),
 	}
@@ -50,7 +52,8 @@ func Run(log *log.Logger) {
 	go func() {
 		for i := 0; i < 20; i++ {
 			for l := range links {
-				getPlugin(host+l, fetcher, log)
+				plugin := getPlugin(host+l, fetcher, log)
+				savePlugin(plugin, mongo)
 			}
 			wg.Done()
 		}
@@ -59,12 +62,18 @@ func Run(log *log.Logger) {
 	log.Println("Finished scrape")
 }
 
-func getPlugin(url string, fetcher *Fetcher, log *log.Logger) {
+func getPlugin(url string, fetcher *Fetcher, log *log.Logger) *plugins.Plugin {
 	log.Println("Getting plugin from", url)
 	text := fetcher.Fetch(url)
+	name := parseName(text)
+	return &plugins.Plugin{Name: name}
+}
+
+func parseName(text string) string {
 	rp := regexp.MustCompile(`.+Plugin:\s+(?P<name>.+)\n`)
-	match := rp.FindStringSubmatch(text)
-	println(&plugins.Plugin{Name: match[1]})
+	name := rp.FindStringSubmatch(text)[1]
+	name = strings.Split(name, "version")[0]
+	return strings.TrimSpace(name)
 }
 
 func getLinks(url string, links chan string, fetcher *Fetcher, log *log.Logger) {
@@ -94,4 +103,12 @@ func getLinks(url string, links chan string, fetcher *Fetcher, log *log.Logger) 
 	f(doc)
 	close(links)
 	log.Println("Found all plugins")
+}
+
+func savePlugin(plugin *plugins.Plugin, mongo *mgo.Session) {
+	pluginCollection(mongo).Upsert(bson.M{"Name": plugin.Name}, bson.M{"Name": plugin.Name})
+}
+
+func pluginCollection(mongo *mgo.Session) *mgo.Collection {
+	return mongo.DB("").C("plugins")
 }

@@ -27,8 +27,7 @@ func FindByName(mongo *mgo.Session, name string) *Plugin {
 
 func All(mongo *mgo.Session) []Plugin {
 	res := []Plugin{}
-	plugins := mongo.DB("").C("plugins")
-	err := plugins.Find(bson.M{}).All(&res)
+	err := pluginCollection(mongo).Find(bson.M{}).All(&res)
 	if err != nil {
 		panic(err)
 	}
